@@ -117,7 +117,7 @@ if gateway.IsBodyURLEncoded(r) {
   query, err := url.ParseQuery(string(r.Request.Body()))
 
   if err != nil {
-    return err
+    panic(err)
   }
 
   %s
@@ -216,7 +216,7 @@ import (
 {{range $svc := .File.Services}}
 {{range $m := $svc.Methods}}
 {{range $b := $m.Bindings}}
-func request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(gateway *gateway.Gateway, ctx context.Context, r *fasthttp.RequestCtx, client {{$svc.GetName}}Client, req *{{$.GetRequestClass $m.RequestType}}) {
+func request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(g *gateway.Gateway, ctx context.Context, r *fasthttp.RequestCtx, client {{$svc.GetName}}Client, req *{{$.GetRequestClass $m.RequestType}}) {
   var err error
   ctx, err = gateway.AnnotateContext(ctx, r)
 
@@ -228,44 +228,46 @@ func request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(gateway *gateway.Gatew
   {{$.QueryTemplate $b}}
   {{$.BodyTemplate $b}}
 
-  {{if ($.IsEmptyResponse $b)}}_{{else}}res{{end}}, err := client.{{$m.GetName}}(ctx, req)
+  {{if ($.IsEmptyResponse $b)}}_, err ={{else}}res, err :={{end}} client.{{$m.GetName}}(ctx, req)
 
   if err != nil {
     panic(err)
   }
 
   {{if $m.GetServerStreaming}}
-  gateway.ResponseStreamMarshaler(r, res.Recv)
+  g.ResponseStreamMarshaler(r, func() (proto.Message, error) {
+		return res.Recv()
+	})
   {{else if ($.IsEmptyResponse $b)}}
   r.SetStatusCode(fasthttp.StatusNoContent)
   {{else}}
-  gateway.ResponseMarshaler(r, res)
+  g.ResponseMarshaler(r, res)
   {{end}}
 }
 {{end}}
 {{end}}
 
-func Register{{$svc.GetName}}Handler(ctx context.Context, gateway *gateway.Gateway, conn *grpc.ClientConn) {
+func Register{{$svc.GetName}}Handler(ctx context.Context, g *gateway.Gateway, conn *grpc.ClientConn) {
   client := New{{$svc.GetName}}Client(conn)
 
   {{range $m := $svc.Methods}}
   {{range $b := $m.Bindings}}
-  gateway.{{$b.HTTPMethod.String}}({{$b.Path.Path | printf "%q"}}, func (r *fasthttp.RequestCtx) {
+  g.{{$b.HTTPMethod.String}}({{$b.Path.Path | printf "%q"}}, func (r *fasthttp.RequestCtx) {
     req := new({{$.GetRequestClass $m.RequestType}})
-    request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(gateway, ctx, r, client, req)
+    request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(g, ctx, r, client, req)
   })
   {{end}}
   {{end}}
 }
 
-func Register{{$svc.GetName}}HandlerFromEndpoint(ctx context.Context, gateway *gateway.Gateway, endpoint string, opts ...grpc.DialOption) error {
+func Register{{$svc.GetName}}HandlerFromEndpoint(ctx context.Context, g *gateway.Gateway, endpoint string, opts ...grpc.DialOption) error {
   conn, err := grpc.Dial(endpoint, opts...)
 
   if err != nil {
     return err
   }
 
-  Register{{$svc.GetName}}Handler(ctx, gateway, conn)
+  Register{{$svc.GetName}}Handler(ctx, g, conn)
   return nil
 }
 {{end}}`))
