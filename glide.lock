@@ -1,0 +1,55 @@
+hash: 0acbeb52e2724325967fd43a6e0ba5ed6f4b97e1eddace8641535f344ab956ec
+updated: 2016-11-08T11:23:47.616409141+08:00
+imports:
+- name: github.com/buaazp/fasthttprouter
+  version: 5396e5b544db47fab9bce89929cd4c05df3b3de0
+- name: github.com/golang/protobuf
+  version: 2bc9827a78f95c6665b5fe0abd1fd66b496ae2d8
+  subpackages:
+  - proto
+  - protoc-gen-go/descriptor
+  - protoc-gen-go/plugin
+- name: github.com/grpc-ecosystem/grpc-gateway
+  version: 84398b94e188ee336f307779b57b3aa91af7063c
+  subpackages:
+  - third_party/googleapis/google/api
+- name: github.com/klauspost/compress
+  version: e3b7981a12dd3cab49afa1d3a50e715846f23732
+  subpackages:
+  - flate
+  - gzip
+  - zlib
+- name: github.com/klauspost/cpuid
+  version: 09cded8978dc9e80714c4d85b0322337b0a1e5e0
+- name: github.com/klauspost/crc32
+  version: cb6bfca970f6908083f26f39a79009d608efd5cd
+- name: github.com/valyala/bytebufferpool
+  version: e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7
+- name: github.com/valyala/fasthttp
+  version: 6cd438ba896c48caa4194fb7381d91eae33b9461
+  subpackages:
+  - fasthttputil
+  - stackless
+- name: golang.org/x/net
+  version: 87635b2611e4683a6f0aa595c36683021a00b2e4
+  subpackages:
+  - context
+  - http2
+  - http2/hpack
+  - idna
+  - internal/timeseries
+  - lex/httplex
+  - trace
+- name: google.golang.org/grpc
+  version: eddbd11c7ecd001d06777cb87b5ea7af54227907
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - peer
+  - tap
+  - transport
+testImports: []

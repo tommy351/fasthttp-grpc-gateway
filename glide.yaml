@@ -1,0 +1,20 @@
+package: github.com/tommy351/fasthttp-grpc-gateway
+import:
+- package: github.com/golang/protobuf
+  subpackages:
+  - proto
+  - protoc-gen-go/descriptor
+  - protoc-gen-go/plugin
+- package: github.com/grpc-ecosystem/grpc-gateway
+  subpackages:
+  - third_party/googleapis/google/api
+- package: github.com/valyala/fasthttp
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc
+  subpackages:
+  - codes
+  - metadata
+- package: github.com/buaazp/fasthttprouter
+  version: ~0.1.0
