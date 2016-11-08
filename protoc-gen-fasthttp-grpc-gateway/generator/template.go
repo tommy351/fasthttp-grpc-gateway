@@ -135,9 +135,16 @@ func (g *gatewayTemplate) IsEmptyResponse(b *Binding) bool {
 }
 
 func (g *gatewayTemplate) ConvertStringField(field *Field, lhs string, rhs string) string {
+	switch field.GetType() {
+	case pd.FieldDescriptorProto_TYPE_BYTES:
+		return fmt.Sprintf("%s = []byte(%s)", lhs, rhs)
+	case pd.FieldDescriptorProto_TYPE_STRING:
+		return fmt.Sprintf("%s = %s", lhs, rhs)
+	}
+
 	if fn, ok := convertStringFuncMap[field.GetType()]; ok {
 		v := fmt.Sprintf(fn, rhs)
-		return fmt.Sprintf("%s = %s", lhs, v)
+		return fmt.Sprintf("if v, err := %s; err == nil { %s = v } else { panic(err) }", v, lhs)
 	}
 
 	return ""
@@ -291,8 +298,6 @@ func Register{{$svc.GetName}}HandlerFromEndpoint(ctx context.Context, g *gateway
 	}
 
 	convertStringFuncMap = map[pd.FieldDescriptorProto_Type]string{
-		pd.FieldDescriptorProto_TYPE_BYTES:    "string(%s)",
-		pd.FieldDescriptorProto_TYPE_STRING:   "%s",
 		pd.FieldDescriptorProto_TYPE_DOUBLE:   "gateway.ConvertStringToFloat64(%s)",
 		pd.FieldDescriptorProto_TYPE_FLOAT:    "gateway.ConvertStringToFloat32(%s)",
 		pd.FieldDescriptorProto_TYPE_INT64:    "gateway.ConvertStringToInt64(%s)",
