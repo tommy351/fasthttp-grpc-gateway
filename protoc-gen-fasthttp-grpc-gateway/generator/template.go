@@ -129,13 +129,13 @@ if gateway.IsBodyURLEncoded(r) {
   query, err := url.ParseQuery(string(r.Request.Body()))
 
   if err != nil {
-    return nil, meta, err
+    return nil, nil, err
   }
 
   %s
 } else {
   if err := json.Unmarshal(r.Request.Body(), body); err != nil {
-    return nil, meta, err
+    return nil, nil, err
   }
 }`, body)
 
@@ -156,7 +156,7 @@ func (g *gatewayTemplate) ConvertStringField(field *Field, lhs string, rhs strin
 
 	if fn, ok := convertStringFuncMap[field.GetType()]; ok {
 		v := fmt.Sprintf(fn, rhs)
-		return fmt.Sprintf("if v, err := %s; err == nil { %s = v } else { return nil, meta, err }\n", v, lhs)
+		return fmt.Sprintf("if v, err := %s; err == nil { %s = v } else { return nil, nil, err }\n", v, lhs)
 	}
 
 	return ""
@@ -237,17 +237,17 @@ import (
 {{range $b := $m.Bindings}}
 {{$.FuncTemplate $svc $m $b}}
   var err error
-	meta := new(gateway.Metadata)
   ctx, err = gateway.AnnotateContext(ctx, r)
 
   if err != nil {
-		return nil, meta, err
+		return nil, nil, err
   }
 
   {{$.PathTemplate $b}}
   {{$.QueryTemplate $b}}
   {{$.BodyTemplate $b}}
 
+	meta := new(gateway.Metadata)
   res, err := client.{{$m.GetName}}(ctx, req, grpc.Header(&meta.Header), grpc.Trailer(&meta.Trailer))
 	return res, meta, err
 }
@@ -264,7 +264,12 @@ func Register{{$svc.GetName}}Handler(ctx context.Context, gw *gateway.Gateway, c
     res, meta, err := request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(ctx, r, client, req)
 
 		if err != nil {
-			gw.ResponseErrorHandler(r, meta, err)
+			if meta != nil {
+				gw.ResponseErrorHandler(r, meta, err)
+			} else {
+				gw.MarshalErrorHandler(r, err)
+			}
+			
 			return
 		}
 

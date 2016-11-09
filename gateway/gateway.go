@@ -11,6 +11,7 @@ import (
 type ResponseMarshaler func(*fasthttp.RequestCtx, *Metadata, interface{})
 type ResponseStreamMarshaler func(*fasthttp.RequestCtx, *Metadata, StreamRecvFunc)
 type StreamRecvFunc func() (proto.Message, error)
+type MarshalErrorHandler func(*fasthttp.RequestCtx, error)
 type ResponseErrorHandler func(*fasthttp.RequestCtx, *Metadata, error)
 
 var (
@@ -40,6 +41,7 @@ type Gateway struct {
 
 	ResponseMarshaler       ResponseMarshaler
 	ResponseStreamMarshaler ResponseStreamMarshaler
+	MarshalErrorHandler     MarshalErrorHandler
 	ResponseErrorHandler    ResponseErrorHandler
 }
 
@@ -50,8 +52,14 @@ func NewGateway() *Gateway {
 		Router:                  router,
 		ResponseMarshaler:       PrintJSON,
 		ResponseStreamMarshaler: PrintJSONStream,
+		MarshalErrorHandler:     DefaultMarshalErrorHandler,
 		ResponseErrorHandler:    DefaultResponseErrorHandler,
 	}
+}
+
+func DefaultMarshalErrorHandler(r *fasthttp.RequestCtx, err error) {
+	r.SetStatusCode(fasthttp.StatusBadRequest)
+	r.WriteString("Bad request")
 }
 
 func DefaultResponseErrorHandler(r *fasthttp.RequestCtx, meta *Metadata, err error) {
