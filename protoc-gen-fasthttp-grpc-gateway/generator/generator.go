@@ -116,9 +116,11 @@ func (g *Generator) generateFile(file *File) ([]byte, error) {
 
 	for _, svc := range file.Services {
 		for _, m := range svc.Methods {
-			pkg := m.RequestType.File.GoPkg.Path
+			if pkg := m.RequestType.File.GoPkg.Path; pkg != file.GoPkg.Path {
+				imports = append(imports, pkg)
+			}
 
-			if pkg != file.GoPkg.Path {
+			if pkg := m.ResponseType.File.GoPkg.Path; pkg != file.GoPkg.Path {
 				imports = append(imports, pkg)
 			}
 		}
@@ -156,7 +158,15 @@ func (g *Generator) LookupEnum(name string) *Enum {
 }
 
 func (g *Generator) goPackagePath(f *descriptor.FileDescriptorProto) string {
-	return path.Dir(f.GetName())
+	name := f.GetName()
+	gopkg := f.Options.GetGoPackage()
+	idx := strings.LastIndex(gopkg, "/")
+
+	if idx >= 0 {
+		return gopkg
+	}
+
+	return path.Dir(name)
 }
 
 func defaultGoPackageName(f *descriptor.FileDescriptorProto) string {

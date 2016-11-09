@@ -14,7 +14,7 @@ type gatewayTemplate struct {
 	Imports   []*GoPackage
 }
 
-func (g *gatewayTemplate) GetRequestClass(msg *Message) string {
+func (g *gatewayTemplate) GetClassName(msg *Message) string {
 	if msg.File == g.File {
 		return msg.GetName()
 	}
@@ -26,6 +26,18 @@ func (g *gatewayTemplate) GetRequestClass(msg *Message) string {
 	}
 
 	return ""
+}
+
+func (g *gatewayTemplate) FuncTemplate(s *Service, m *Method, b *Binding) string {
+	var resClass string
+
+	if m.GetServerStreaming() {
+		resClass = fmt.Sprintf("%s_%sClient", s.GetName(), m.GetName())
+	} else {
+		resClass = "*" + g.GetClassName(m.ResponseType)
+	}
+
+	return fmt.Sprintf("func request_%s_%s_%d(ctx context.Context, r *fasthttp.RequestCtx, client %sClient, req *%s) (%s, *gateway.Metadata, error) {", s.GetName(), m.GetName(), b.Index, s.GetName(), g.GetClassName(m.RequestType), resClass)
 }
 
 func (g *gatewayTemplate) PathTemplate(b *Binding) string {
@@ -117,13 +129,13 @@ if gateway.IsBodyURLEncoded(r) {
   query, err := url.ParseQuery(string(r.Request.Body()))
 
   if err != nil {
-    panic(err)
+    return nil, meta, err
   }
 
   %s
 } else {
   if err := json.Unmarshal(r.Request.Body(), body); err != nil {
-    panic(err)
+    return nil, meta, err
   }
 }`, body)
 
@@ -144,7 +156,7 @@ func (g *gatewayTemplate) ConvertStringField(field *Field, lhs string, rhs strin
 
 	if fn, ok := convertStringFuncMap[field.GetType()]; ok {
 		v := fmt.Sprintf(fn, rhs)
-		return fmt.Sprintf("if v, err := %s; err == nil { %s = v } else { panic(err) }", v, lhs)
+		return fmt.Sprintf("if v, err := %s; err == nil { %s = v } else { return nil, meta, err }\n", v, lhs)
 	}
 
 	return ""
@@ -223,45 +235,46 @@ import (
 {{range $svc := .File.Services}}
 {{range $m := $svc.Methods}}
 {{range $b := $m.Bindings}}
-func request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(g *gateway.Gateway, ctx context.Context, r *fasthttp.RequestCtx, client {{$svc.GetName}}Client, req *{{$.GetRequestClass $m.RequestType}}) {
+{{$.FuncTemplate $svc $m $b}}
   var err error
+	meta := new(gateway.Metadata)
   ctx, err = gateway.AnnotateContext(ctx, r)
 
   if err != nil {
-    panic(err)
+		return nil, meta, err
   }
 
   {{$.PathTemplate $b}}
   {{$.QueryTemplate $b}}
   {{$.BodyTemplate $b}}
 
-  {{if ($.IsEmptyResponse $b)}}_, err ={{else}}res, err :={{end}} client.{{$m.GetName}}(ctx, req)
-
-  if err != nil {
-    panic(err)
-  }
-
-  {{if $m.GetServerStreaming}}
-  g.ResponseStreamMarshaler(r, func() (proto.Message, error) {
-		return res.Recv()
-	})
-  {{else if ($.IsEmptyResponse $b)}}
-  r.SetStatusCode(fasthttp.StatusNoContent)
-  {{else}}
-  g.ResponseMarshaler(r, res)
-  {{end}}
+  res, err := client.{{$m.GetName}}(ctx, req, grpc.Header(&meta.Header), grpc.Trailer(&meta.Trailer))
+	return res, meta, err
 }
 {{end}}
 {{end}}
 
-func Register{{$svc.GetName}}Handler(ctx context.Context, g *gateway.Gateway, conn *grpc.ClientConn) {
+func Register{{$svc.GetName}}Handler(ctx context.Context, gw *gateway.Gateway, conn *grpc.ClientConn) {
   client := New{{$svc.GetName}}Client(conn)
 
   {{range $m := $svc.Methods}}
   {{range $b := $m.Bindings}}
-  g.{{$b.HTTPMethod.String}}({{$b.Path.Path | printf "%q"}}, func (r *fasthttp.RequestCtx) {
-    req := new({{$.GetRequestClass $m.RequestType}})
-    request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(g, ctx, r, client, req)
+  gw.{{$b.HTTPMethod.String}}({{$b.Path.Path | printf "%q"}}, func (r *fasthttp.RequestCtx) {
+    req := new({{$.GetClassName $m.RequestType}})
+    res, meta, err := request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(ctx, r, client, req)
+
+		if err != nil {
+			gw.ResponseErrorHandler(r, meta, err)
+			return
+		}
+
+		{{if $m.GetServerStreaming}}
+		gw.ResponseStreamMarshaler(r, meta, func() (proto.Message, error) {
+			return res.Recv()
+		})
+		{{else}}
+		gw.ResponseMarshaler(r, meta, res)
+		{{end}}
   })
   {{end}}
   {{end}}

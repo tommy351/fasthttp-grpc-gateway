@@ -30,7 +30,7 @@ func IsBodyJSON(ctx *fasthttp.RequestCtx) bool {
 	return bytes.HasPrefix(contentType, contentTypeJSON)
 }
 
-func PrintJSON(ctx *fasthttp.RequestCtx, body interface{}) {
+func PrintJSON(ctx *fasthttp.RequestCtx, meta *Metadata, body interface{}) {
 	encoder := json.NewEncoder(ctx)
 
 	if err := encoder.Encode(body); err != nil {
@@ -40,7 +40,7 @@ func PrintJSON(ctx *fasthttp.RequestCtx, body interface{}) {
 	ctx.Response.Header.SetContentTypeBytes(contentTypeJSON)
 }
 
-func PrintJSONStream(ctx *fasthttp.RequestCtx, recv StreamRecvFunc) {
+func PrintJSONStream(ctx *fasthttp.RequestCtx, meta *Metadata, recv StreamRecvFunc) {
 	ctx.Response.Header.SetBytesKV(strTransferEncoding, strChunked)
 	ctx.Response.Header.SetContentTypeBytes(contentTypeJSON)
 	ctx.Response.SetBodyStreamWriter(func(w *bufio.Writer) {
@@ -64,7 +64,7 @@ func PrintJSONStream(ctx *fasthttp.RequestCtx, recv StreamRecvFunc) {
 	})
 }
 
-func PrintJSONStreamArray(ctx *fasthttp.RequestCtx, recv StreamRecvFunc) {
+func PrintJSONStreamArray(ctx *fasthttp.RequestCtx, meta *Metadata, recv StreamRecvFunc) {
 	ctx.Response.Header.SetBytesKV(strTransferEncoding, strChunked)
 	ctx.Response.Header.SetContentTypeBytes(contentTypeJSON)
 	ctx.Response.SetBodyStreamWriter(func(w *bufio.Writer) {
