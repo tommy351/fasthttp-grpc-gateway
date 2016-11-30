@@ -20,16 +20,19 @@ var (
 	jsonArrayDelimiter = []byte(",")
 )
 
+// IsBodyURLEncoded checks if the Content-Type of request is application/x-www-form-urlencoded.
 func IsBodyURLEncoded(ctx *fasthttp.RequestCtx) bool {
 	contentType := ctx.Request.Header.ContentType()
 	return bytes.HasPrefix(contentType, contentTypeFormURLEncoded)
 }
 
+// IsBodyJSON checks if the Content-Type of request is application/json.
 func IsBodyJSON(ctx *fasthttp.RequestCtx) bool {
 	contentType := ctx.Request.Header.ContentType()
 	return bytes.HasPrefix(contentType, contentTypeJSON)
 }
 
+// PrintJSON writes body to the response.
 func PrintJSON(ctx *fasthttp.RequestCtx, meta *Metadata, body interface{}) {
 	encoder := json.NewEncoder(ctx)
 
@@ -40,6 +43,7 @@ func PrintJSON(ctx *fasthttp.RequestCtx, meta *Metadata, body interface{}) {
 	ctx.Response.Header.SetContentTypeBytes(contentTypeJSON)
 }
 
+// PrintJSONStream writes stream to the response.
 func PrintJSONStream(ctx *fasthttp.RequestCtx, meta *Metadata, recv StreamRecvFunc) {
 	ctx.Response.Header.SetBytesKV(strTransferEncoding, strChunked)
 	ctx.Response.Header.SetContentTypeBytes(contentTypeJSON)
@@ -64,6 +68,7 @@ func PrintJSONStream(ctx *fasthttp.RequestCtx, meta *Metadata, recv StreamRecvFu
 	})
 }
 
+// PrintJSONStreamArray writes stream to the response as a JSON array.
 func PrintJSONStreamArray(ctx *fasthttp.RequestCtx, meta *Metadata, recv StreamRecvFunc) {
 	ctx.Response.Header.SetBytesKV(strTransferEncoding, strChunked)
 	ctx.Response.Header.SetContentTypeBytes(contentTypeJSON)

@@ -16,8 +16,11 @@ import (
 )
 
 const (
+	// DefaultContextTimeout is the duration of context timeout.
 	DefaultContextTimeout = 0 * time.Second
-	MetadataHeaderPrefix  = "Grpc-Metadata-"
+	// MetadataHeaderPrefix is the prefix of gRPC header.
+	MetadataHeaderPrefix = "Grpc-Metadata-"
+	// MetadataTrailerPrefix is the prefix of gRPC trailer.
 	MetadataTrailerPrefix = "Grpc-Trailer-"
 )
 
@@ -31,6 +34,10 @@ var (
 	lenMetadataTrailerPrefix = len(strMetadataTrailerPrefix)
 )
 
+// AnnotateContext reads headers from the request and add them to gRPC headers.
+//
+//   * Authorization -> authorization
+//   * Grpc-Metadata-* -> Strip Grpc-Metadata-
 func AnnotateContext(ctx context.Context, r *fasthttp.RequestCtx) (context.Context, error) {
 	var pairs []string
 	timeout := DefaultContextTimeout

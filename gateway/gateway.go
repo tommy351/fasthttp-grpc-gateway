@@ -8,13 +8,23 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+// ResponseMarshaler receives metadata and response and writes them to the request context.
 type ResponseMarshaler func(*fasthttp.RequestCtx, *Metadata, interface{})
+
+// ResponseStreamMarshaler receives metadata and response of stream and writes them to the request context.
 type ResponseStreamMarshaler func(*fasthttp.RequestCtx, *Metadata, StreamRecvFunc)
+
+// StreamRecvFunc returns protobuf messages.
 type StreamRecvFunc func() (proto.Message, error)
+
+// MarshalErrorHandler handles errors of converting JSON requests to protobuf.
 type MarshalErrorHandler func(*fasthttp.RequestCtx, error)
+
+// ResponseErrorHandler handles errors of sending requests to gRPC services.
 type ResponseErrorHandler func(*fasthttp.RequestCtx, *Metadata, error)
 
 var (
+	// GRPCErrorCodes is a map of gRPC error codes and their corresponding HTTP status codes.
 	GRPCErrorCodes = map[codes.Code]int{
 		codes.OK:                 fasthttp.StatusOK,
 		codes.Canceled:           fasthttp.StatusRequestTimeout,
@@ -36,15 +46,24 @@ var (
 	}
 )
 
+// Gateway extends fasthttprouter.Router.
 type Gateway struct {
 	*fasthttprouter.Router
 
-	ResponseMarshaler       ResponseMarshaler
+	// Default to PrintJSON.
+	ResponseMarshaler ResponseMarshaler
+
+	// Default to PrintJSONStream. You can try PrintJSONStreamArray instead.
 	ResponseStreamMarshaler ResponseStreamMarshaler
-	MarshalErrorHandler     MarshalErrorHandler
-	ResponseErrorHandler    ResponseErrorHandler
+
+	// Default to DefaultMarshalErrorHandler.
+	MarshalErrorHandler MarshalErrorHandler
+
+	// Default to DefaultResponseErrorHandler.
+	ResponseErrorHandler ResponseErrorHandler
 }
 
+// NewGateway creates a new gateway with default handlers and router.
 func NewGateway() *Gateway {
 	router := fasthttprouter.New()
 
@@ -57,11 +76,14 @@ func NewGateway() *Gateway {
 	}
 }
 
+// DefaultMarshalErrorHandler returns HTTP status code 400 and "bad request" in response body.
 func DefaultMarshalErrorHandler(r *fasthttp.RequestCtx, err error) {
 	r.SetStatusCode(fasthttp.StatusBadRequest)
 	r.WriteString("Bad request")
 }
 
+// DefaultResponseErrorHandler returns corresponding HTTP status code of gRPC error and
+// error message as the response body.
 func DefaultResponseErrorHandler(r *fasthttp.RequestCtx, meta *Metadata, err error) {
 	code := grpc.Code(err)
 	desc := grpc.ErrorDesc(err)
