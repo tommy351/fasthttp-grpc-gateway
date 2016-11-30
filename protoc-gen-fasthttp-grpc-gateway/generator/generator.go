@@ -84,6 +84,10 @@ func (g *Generator) Generate() ([]*plugin.CodeGeneratorResponse_File, error) {
 			continue
 		}
 
+		if len(file.Services) == 0 {
+			continue
+		}
+
 		content, err := g.generateFile(file)
 
 		if err != nil {

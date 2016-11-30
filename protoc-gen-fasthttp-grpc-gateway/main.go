@@ -33,7 +33,9 @@ func main() {
 		return
 	}
 
-	emitFiles(files)
+	if len(files) > 0 {
+		emitFiles(files)
+	}
 }
 
 func parseReq(r io.Reader) (*plugin.CodeGeneratorRequest, error) {
