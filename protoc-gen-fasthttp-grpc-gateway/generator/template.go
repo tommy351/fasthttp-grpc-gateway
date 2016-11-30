@@ -37,7 +37,7 @@ func (g *gatewayTemplate) FuncTemplate(s *Service, m *Method, b *Binding) string
 		resClass = "*" + g.GetClassName(m.ResponseType)
 	}
 
-	return fmt.Sprintf("func request_%s_%s_%d(ctx context.Context, r *fasthttp.RequestCtx, client %sClient, req *%s) (%s, *gateway.Metadata, error) {", s.GetName(), m.GetName(), b.Index, s.GetName(), g.GetClassName(m.RequestType), resClass)
+	return fmt.Sprintf("func request%s%s%d(ctx context.Context, r *fasthttp.RequestCtx, client %sClient, req *%s) (%s, *gateway.Metadata, error) {", s.GetName(), m.GetName(), b.Index, s.GetName(), g.GetClassName(m.RequestType), resClass)
 }
 
 func (g *gatewayTemplate) PathTemplate(b *Binding) string {
@@ -232,6 +232,9 @@ import (
   {{range $i := .Imports}}{{$i.String | printf "%s\n"}}{{end}}
 )
 
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto.Marshal
+
 {{range $svc := .File.Services}}
 {{range $m := $svc.Methods}}
 {{range $b := $m.Bindings}}
@@ -254,6 +257,7 @@ import (
 {{end}}
 {{end}}
 
+// Register{{$svc.GetName}}Handler registers HTTP handlers to the gateway.
 func Register{{$svc.GetName}}Handler(ctx context.Context, gw *gateway.Gateway, conn *grpc.ClientConn) {
   client := New{{$svc.GetName}}Client(conn)
 
@@ -261,7 +265,7 @@ func Register{{$svc.GetName}}Handler(ctx context.Context, gw *gateway.Gateway, c
   {{range $b := $m.Bindings}}
   gw.{{$b.HTTPMethod.String}}({{$b.Path.Path | printf "%q"}}, func (r *fasthttp.RequestCtx) {
     req := new({{$.GetClassName $m.RequestType}})
-    res, meta, err := request_{{$svc.GetName}}_{{$m.GetName}}_{{$b.Index}}(ctx, r, client, req)
+    res, meta, err := request{{$svc.GetName}}{{$m.GetName}}{{$b.Index}}(ctx, r, client, req)
 
 		if err != nil {
 			if meta != nil {
@@ -285,6 +289,8 @@ func Register{{$svc.GetName}}Handler(ctx context.Context, gw *gateway.Gateway, c
   {{end}}
 }
 
+// Register{{$svc.GetName}}HandlerFromEndpoint is same as Register{{$svc.GetName}}Handler but
+// automatically dials to the endpoint.
 func Register{{$svc.GetName}}HandlerFromEndpoint(ctx context.Context, g *gateway.Gateway, endpoint string, opts ...grpc.DialOption) error {
   conn, err := grpc.Dial(endpoint, opts...)
 
